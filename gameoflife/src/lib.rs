@@ -1,3 +1,4 @@
+use rand::{Rng, seq::SliceRandom};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -16,17 +17,6 @@ pub struct Universe {
 }
 
 impl Universe {
-    pub fn get_cells(&self) -> &[Cell] {
-        &self.cells
-    }
-
-    pub fn set_cells(&mut self, cells: &[(usize, usize)]) -> () {
-        for cell in cells.iter().cloned() {
-            let index = self.get_index(cell.0, cell.1);
-            self.cells[index] = Cell::Alive;
-        }
-    }
-
     fn get_index(&self, row: usize, col: usize) -> usize {
         return row * self.width + col;
     }
@@ -45,6 +35,13 @@ impl Universe {
         }
         count
     }
+
+    pub fn set_cells(&mut self, cells: &[(usize, usize)]) -> () {
+        for cell in cells.iter().cloned() {
+            let index = self.get_index(cell.0, cell.1);
+            self.cells[index] = Cell::Alive;
+        }
+    }
 }
 
 #[wasm_bindgen]
@@ -55,40 +52,6 @@ impl Universe {
             height,
             cells: (0..width * height).map(|_| Cell::Dead).collect(),
         }
-    }
-
-    pub fn set_cells_default(&mut self) {
-        self.cells = (0..self.width * self.height)
-            .map(|i| {
-                if (i % 2 == 0) || (i % 7 == 0) {
-                    Cell::Alive
-                } else {
-                    Cell::Dead
-                }
-            })
-            .collect();
-    }
-
-    pub fn set_width(&mut self, width: usize) -> () {
-        self.width = width;
-        self.cells = (0..self.width * self.height).map(|_| Cell::Dead).collect();
-    }
-
-    pub fn set_height(&mut self, height: usize) -> () {
-        self.height = height;
-        self.cells = (0..self.width * self.height).map(|_| Cell::Dead).collect();
-    }
-
-    pub fn get_width(&self) -> usize {
-        self.width
-    }
-
-    pub fn get_height(&self) -> usize {
-        self.height
-    }
-
-    pub fn get_cells_ptr(&self) -> *const Cell {
-        return self.cells.as_ptr();
     }
 
     pub fn tick(&mut self) {
@@ -105,5 +68,42 @@ impl Universe {
             }
         }
         self.cells = next;
+    }
+
+    pub fn get_cells(&self) -> *const Cell {
+        return self.cells.as_ptr();
+    }
+
+    pub fn reset_cells(&mut self) -> () {
+        for i in 0..self.cells.len() {
+            self.cells[i] = Cell::Dead;
+        }
+    }
+
+    pub fn randomize_cells(&mut self) -> () {
+        let mut rng = rand::rng();
+        let count: usize = rng.random_range(0..self.width * self.height);
+        for i in 0..self.cells.len() {
+            self.cells[i] = if i <= count { Cell::Alive } else { Cell::Dead };
+        }
+        self.cells.shuffle(&mut rng);
+    }
+
+    pub fn get_width(&self) -> usize {
+        self.width
+    }
+
+    pub fn get_height(&self) -> usize {
+        self.height
+    }
+
+    pub fn set_width(&mut self, width: usize) -> () {
+        self.width = width;
+        self.cells = (0..self.width * self.height).map(|_| Cell::Dead).collect();
+    }
+
+    pub fn set_height(&mut self, height: usize) -> () {
+        self.height = height;
+        self.cells = (0..self.width * self.height).map(|_| Cell::Dead).collect();
     }
 }

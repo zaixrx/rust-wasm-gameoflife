@@ -1,15 +1,25 @@
 import init, { Cell, Universe } from "pkg";
 
+function mustGetElementById<T extends HTMLElement>(
+    id: string,
+    ctor: { new (): T },
+): T {
+    const element = document.getElementById(id);
+    if (!element) throw new Error(`failed to get element with id: "${id}"`);
+    if (!(element instanceof (ctor as any)))
+        throw new Error(`unexpected type for "${id}"`);
+    return element as T;
+}
+
 abstract class GameBase {
+    public universe: Universe;
     protected readonly memory: WebAssembly.Memory;
-    protected universe: Universe;
     protected width: number;
     protected height: number;
 
     constructor(memory: WebAssembly.Memory, width: number, height: number) {
         this.memory = memory;
         this.universe = Universe.new(width, height);
-        this.universe.set_cells_default();
         this.width = this.universe.get_width();
         this.height = this.universe.get_height();
     }
@@ -65,7 +75,7 @@ class GameRenderer extends GameBase {
 
         const cells = new Uint8Array(
             this.memory.buffer,
-            this.universe.get_cells_ptr(),
+            this.universe.get_cells(),
             this.width * this.height,
         );
 
@@ -88,12 +98,41 @@ class GameRenderer extends GameBase {
     }
 }
 
+interface GameState {
+    animationId: number;
+    renderer: GameRenderer;
+}
+
 (async () => {
     const { memory } = await init();
-    const renderer = new GameRenderer(memory, 200, 200);
-    function run() {
-        renderer.update();
-        return requestAnimationFrame(run);
-    }
-    run();
+    const state = {
+        renderer: new GameRenderer(memory, 200, 200),
+        animationId: null,
+    } as GameState;
+
+    const [control, clear, random] = [
+        mustGetElementById("control", HTMLButtonElement),
+        mustGetElementById("clear", HTMLButtonElement),
+        mustGetElementById("random", HTMLButtonElement),
+    ];
+
+    control.textContent = "▶";
+    control.onclick = () => {
+        if (state.animationId) {
+            control.textContent = "▶";
+            cancelAnimationFrame(state.animationId);
+            state.animationId = null;
+        } else {
+            control.textContent = "⏸";
+            run();
+        }
+    };
+
+    clear.onclick = () => state.renderer.universe.reset_cells();
+    random.onclick = () => state.renderer.universe.randomize_cells();
+
+    const run = () => {
+        state.renderer.update();
+        state.animationId = requestAnimationFrame(run);
+    };
 })();

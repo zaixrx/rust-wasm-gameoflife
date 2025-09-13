@@ -8,13 +8,20 @@
         <title>WASM GameOfLife</title>
     </head>
     <body>
-        <canvas
-            style="
-                image-rendering: pixelated;
-                image-rendering: crisp-edges;
-                width: 100%;
-            "
-        >
-        </canvas>
+        <main style="display: flex; flex-direction: column">
+            <section style="display: flex; flex-direction: row; gap: 1rem">
+                <button id="control" style="height: 2rem; width: 2rem"></button>
+                <button id="clear">Clear</button>
+                <button id="random">Random</button>
+            </section>
+            <canvas
+                style="
+                    image-rendering: pixelated;
+                    image-rendering: crisp-edges;
+                    width: 50%;
+                "
+            >
+            </canvas>
+        </main>
     </body>
 </html>
