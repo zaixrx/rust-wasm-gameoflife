@@ -1,4 +1,4 @@
-use rand::{Rng, seq::SliceRandom};
+use rand::Rng;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -36,7 +36,11 @@ impl Universe {
         count
     }
 
-    pub fn set_cells(&mut self, cells: &[(usize, usize)]) -> () {
+    pub fn get_rs_cells(&self) -> &[Cell] {
+        self.cells.as_slice()
+    }
+
+    pub fn set_rs_cells(&mut self, cells: &[(usize, usize)]) -> () {
         for cell in cells.iter().cloned() {
             let index = self.get_index(cell.0, cell.1);
             self.cells[index] = Cell::Alive;
@@ -50,7 +54,7 @@ impl Universe {
         Self {
             width,
             height,
-            cells: (0..width * height).map(|_| Cell::Dead).collect(),
+            cells: (0..width * height).map(|_| Cell::Dead).collect()
         }
     }
 
@@ -82,11 +86,9 @@ impl Universe {
 
     pub fn randomize_cells(&mut self) -> () {
         let mut rng = rand::rng();
-        let count: usize = rng.random_range(0..self.width * self.height);
         for i in 0..self.cells.len() {
-            self.cells[i] = if i <= count { Cell::Alive } else { Cell::Dead };
+            self.cells[i] = if rng.random_bool(0.5) { Cell::Alive } else { Cell::Dead };
         }
-        self.cells.shuffle(&mut rng);
     }
 
     pub fn get_width(&self) -> usize {
