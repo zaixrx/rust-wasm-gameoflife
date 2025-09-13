@@ -53,7 +53,7 @@ impl Universe {
         Self {
             width,
             height,
-            cells: Vec::with_capacity(width * height),
+            cells: (0..width * height).map(|_| Cell::Dead).collect(),
         }
     }
 

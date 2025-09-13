@@ -1,10 +1,10 @@
-use wasm_bindgen_test::wasm_bindgen_test;
+use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
 use wasm_examples_gol::Universe;
 
 #[cfg(test)]
 pub fn input_universe() -> Universe {
     let mut universe = Universe::new(5, 5);
-    universe.set_cells(&[(1, 1), (2, 1), (2, 2), (3, 1), (3, 3)]);
+    universe.set_cells(&[(1, 1), (3, 1), (2, 2), (1, 3), (3, 3)]);
     universe
 }
 
@@ -17,8 +17,9 @@ pub fn expected_universe() -> Universe {
 
 #[wasm_bindgen_test]
 pub fn test_tick() {
+    wasm_bindgen_test_configure!(run_in_browser);
     let mut input_universe = input_universe();
     input_universe.tick();
     let expected_universe = expected_universe();
-    assert_eq!(&input_universe.get_cells(), &expected_universe.get_cells());
+    assert_eq!(input_universe.get_cells(), expected_universe.get_cells());
 }
