@@ -9,6 +9,7 @@ abstract class GameBase {
     constructor(memory: WebAssembly.Memory, width: number, height: number) {
         this.memory = memory;
         this.universe = Universe.new(width, height);
+        this.universe.set_cells_default();
         this.width = this.universe.get_width();
         this.height = this.universe.get_height();
     }
@@ -64,7 +65,7 @@ class GameRenderer extends GameBase {
 
         const cells = new Uint8Array(
             this.memory.buffer,
-            this.universe.get_cells(),
+            this.universe.get_cells_ptr(),
             this.width * this.height,
         );
 

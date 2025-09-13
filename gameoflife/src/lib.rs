@@ -16,6 +16,17 @@ pub struct Universe {
 }
 
 impl Universe {
+    pub fn get_cells(&self) -> &[Cell] {
+        &self.cells
+    }
+
+    pub fn set_cells(&mut self, cells: &[(usize, usize)]) -> () {
+        for cell in cells.iter().cloned() {
+            let index = self.get_index(cell.0, cell.1);
+            self.cells[index] = Cell::Alive;
+        }
+    }
+
     fn get_index(&self, row: usize, col: usize) -> usize {
         return row * self.width + col;
     }
@@ -39,7 +50,15 @@ impl Universe {
 #[wasm_bindgen]
 impl Universe {
     pub fn new(width: usize, height: usize) -> Self {
-        let cells = (0..width * height)
+        Self {
+            width,
+            height,
+            cells: Vec::with_capacity(width * height),
+        }
+    }
+
+    pub fn set_cells_default(&mut self) {
+        self.cells = (0..self.width * self.height)
             .map(|i| {
                 if (i % 2 == 0) || (i % 7 == 0) {
                     Cell::Alive
@@ -48,11 +67,16 @@ impl Universe {
                 }
             })
             .collect();
-        Self {
-            width,
-            height,
-            cells,
-        }
+    }
+
+    pub fn set_width(&mut self, width: usize) -> () {
+        self.width = width;
+        self.cells = (0..self.width * self.height).map(|_| Cell::Dead).collect();
+    }
+
+    pub fn set_height(&mut self, height: usize) -> () {
+        self.height = height;
+        self.cells = (0..self.width * self.height).map(|_| Cell::Dead).collect();
     }
 
     pub fn get_width(&self) -> usize {
@@ -63,7 +87,7 @@ impl Universe {
         self.height
     }
 
-    pub fn get_cells(&self) -> *const Cell {
+    pub fn get_cells_ptr(&self) -> *const Cell {
         return self.cells.as_ptr();
     }
 
