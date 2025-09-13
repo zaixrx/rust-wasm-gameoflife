@@ -1,63 +1,98 @@
 import init, { Cell, Universe } from "pkg";
 
-const CELL_SIZE = 5;
-const GRID_COLOR = "#CCCCCC";
-const DEAD_COLOR = "#FFFFFF";
-const ALIVE_COLOR = "#000000";
-const TARGET_FPS = 10;
+abstract class GameBase {
+    protected readonly memory: WebAssembly.Memory;
+    protected universe: Universe;
+    protected width: number;
+    protected height: number;
 
-async function run_wasm() {
-    const { memory } = await init();
+    constructor(memory: WebAssembly.Memory, width: number, height: number) {
+        this.memory = memory;
+        this.universe = Universe.new(width, height);
+        this.width = this.universe.get_width();
+        this.height = this.universe.get_height();
+    }
 
-    const canvas = document.querySelector("canvas");
-    if (!canvas) throw new Error("canvas must not be undefined");
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("canvas must have 2D context");
+    public update() {
+        this.universe.tick();
+        this.render!();
+    }
 
-    const universe = Universe.new();
-    const width = universe.get_width();
-    const height = universe.get_height();
+    protected render?(): void;
+}
 
-    canvas.height = (CELL_SIZE + 1) * height + 1;
-    canvas.width = (CELL_SIZE + 1) * width + 1;
+class GameRenderer extends GameBase {
+    private canvas: HTMLCanvasElement;
+    private ctx: CanvasRenderingContext2D;
 
-    const update = () => {
-        universe.tick();
+    public cellSize = 5;
+    public gridColor = "#CCCCCC";
+    public deadColor = "#FFFFFF";
+    public aliveColor = "#000000";
 
-        ctx.strokeStyle = GRID_COLOR;
-        for (let i = 0; i <= width; ++i) {
-            ctx.moveTo(i * (CELL_SIZE + 1) + 1, 0);
-            ctx.lineTo(i * (CELL_SIZE + 1) + 1, (CELL_SIZE + 1) * height + 1);
+    constructor(memory: WebAssembly.Memory, width: number, height: number) {
+        super(memory, width, height);
+
+        const canvas = document.querySelector("canvas");
+        if (!canvas) throw new Error("canvas must not be undefined");
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("canvas must have 2D context");
+
+        this.canvas = canvas;
+        canvas.height = (this.cellSize + 1) * height + 1;
+        canvas.width = (this.cellSize + 1) * width + 1;
+        this.ctx = ctx;
+    }
+
+    protected render(): void {
+        this.ctx.strokeStyle = this.gridColor;
+        for (let i = 0; i <= this.width; ++i) {
+            this.ctx.moveTo(i * (this.cellSize + 1) + 1, 0);
+            this.ctx.lineTo(
+                i * (this.cellSize + 1) + 1,
+                (this.cellSize + 1) * this.height + 1,
+            );
         }
-        for (let j = 0; j <= height; ++j) {
-            ctx.moveTo(0, j * (CELL_SIZE + 1) + 1);
-            ctx.lineTo((CELL_SIZE + 1) * width + 1, j * (CELL_SIZE + 1) + 1);
+        for (let j = 0; j <= this.height; ++j) {
+            this.ctx.moveTo(0, j * (this.cellSize + 1) + 1);
+            this.ctx.lineTo(
+                (this.cellSize + 1) * this.width + 1,
+                j * (this.cellSize + 1) + 1,
+            );
         }
-        ctx.stroke();
+        this.ctx.stroke();
 
-        const cellsPtr = universe.get_cells();
-        const cells = new Uint8Array(memory.buffer, cellsPtr, width * height);
-        ctx.beginPath();
-        for (let i = 0; i < height; ++i) {
-            for (let j = 0; j < width; ++j) {
-                ctx.fillStyle =
-                    cells[i * width + j] === Cell.Dead
-                        ? DEAD_COLOR
-                        : ALIVE_COLOR;
-                ctx.fillRect(
-                    j * (CELL_SIZE + 1) + 1,
-                    i * (CELL_SIZE + 1) + 1,
-                    CELL_SIZE,
-                    CELL_SIZE,
+        const cells = new Uint8Array(
+            this.memory.buffer,
+            this.universe.get_cells(),
+            this.width * this.height,
+        );
+
+        this.ctx.beginPath();
+        for (let i = 0; i < this.height; ++i) {
+            for (let j = 0; j < this.width; ++j) {
+                this.ctx.fillStyle =
+                    cells[i * this.width + j] === Cell.Dead
+                        ? this.deadColor
+                        : this.aliveColor;
+                this.ctx.fillRect(
+                    j * (this.cellSize + 1) + 1,
+                    i * (this.cellSize + 1) + 1,
+                    this.cellSize,
+                    this.cellSize,
                 );
             }
         }
-        ctx.stroke();
-
-        return setTimeout(update, 1000 / TARGET_FPS);
-    };
-
-    return update();
+        this.ctx.stroke();
+    }
 }
 
-run_wasm();
+(async () => {
+    const { memory } = await init();
+    const renderer = new GameRenderer(memory, 200, 200);
+    function run() {
+        renderer.update();
+        return requestAnimationFrame(run);
+    }
+    run();
+})();
