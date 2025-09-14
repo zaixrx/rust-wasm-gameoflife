@@ -2,7 +2,7 @@ import init, { Cell, Universe } from "pkg";
 
 function mustGetElementById<T extends HTMLElement>(
     id: string,
-    ctor: { new (): T },
+    ctor: { new (): T }
 ): T {
     const element = document.getElementById(id);
     if (!element) throw new Error(`failed to get element with id: "${id}"`);
@@ -12,10 +12,10 @@ function mustGetElementById<T extends HTMLElement>(
 }
 
 abstract class GameBase {
-    public universe: Universe;
+    public width: number;
+    public height: number;
+    protected universe: Universe;
     protected readonly memory: WebAssembly.Memory;
-    protected width: number;
-    protected height: number;
 
     constructor(memory: WebAssembly.Memory, width: number, height: number) {
         this.memory = memory;
@@ -24,16 +24,35 @@ abstract class GameBase {
         this.height = this.universe.get_height();
     }
 
-    public update() {
-        this.universe.tick();
-        this.render!();
+    public reset_cells() {
+        this.universe.reset_cells();
+        this.render();
     }
 
-    protected render?(): void;
+    public randomize_cells() {
+        this.universe.randomize_cells();
+        this.render();
+    }
+
+    public toggle_cell(row: number, col: number) {
+        this.universe.toggle_cell(row, col);
+        this.render();
+    }
+
+    public draw_glider(row: number, col: number) {
+        this.universe.draw_glider(row, col);
+        this.render();
+    }
+
+    public tick() {
+        this.universe.tick();
+        this.render();
+    }
+
+    public render?(): void;
 }
 
 class GameRenderer extends GameBase {
-    private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
 
     public cellSize = 5;
@@ -41,34 +60,35 @@ class GameRenderer extends GameBase {
     public deadColor = "#FFFFFF";
     public aliveColor = "#000000";
 
-    constructor(memory: WebAssembly.Memory, width: number, height: number) {
+    constructor(
+        canvas: HTMLCanvasElement,
+        memory: WebAssembly.Memory,
+        width: number,
+        height: number
+    ) {
         super(memory, width, height);
 
-        const canvas = document.querySelector("canvas");
-        if (!canvas) throw new Error("canvas must not be undefined");
-        const ctx = canvas.getContext("2d");
-        if (!ctx) throw new Error("canvas must have 2D context");
-
-        this.canvas = canvas;
         canvas.height = (this.cellSize + 1) * height + 1;
         canvas.width = (this.cellSize + 1) * width + 1;
-        this.ctx = ctx;
+
+        this.ctx = canvas.getContext("2d");
+        if (!this.ctx) throw new Error("canvas must have 2D context");
     }
 
-    protected render(): void {
+    public render(): void {
         this.ctx.strokeStyle = this.gridColor;
         for (let i = 0; i <= this.width; ++i) {
             this.ctx.moveTo(i * (this.cellSize + 1) + 1, 0);
             this.ctx.lineTo(
                 i * (this.cellSize + 1) + 1,
-                (this.cellSize + 1) * this.height + 1,
+                (this.cellSize + 1) * this.height + 1
             );
         }
         for (let j = 0; j <= this.height; ++j) {
             this.ctx.moveTo(0, j * (this.cellSize + 1) + 1);
             this.ctx.lineTo(
                 (this.cellSize + 1) * this.width + 1,
-                j * (this.cellSize + 1) + 1,
+                j * (this.cellSize + 1) + 1
             );
         }
         this.ctx.stroke();
@@ -76,7 +96,7 @@ class GameRenderer extends GameBase {
         const cells = new Uint8Array(
             this.memory.buffer,
             this.universe.get_cells(),
-            this.width * this.height,
+            this.width * this.height
         );
 
         this.ctx.beginPath();
@@ -90,7 +110,7 @@ class GameRenderer extends GameBase {
                     j * (this.cellSize + 1) + 1,
                     i * (this.cellSize + 1) + 1,
                     this.cellSize,
-                    this.cellSize,
+                    this.cellSize
                 );
             }
         }
@@ -105,34 +125,64 @@ interface GameState {
 
 (async () => {
     const { memory } = await init();
-    const state = {
-        renderer: new GameRenderer(memory, 200, 200),
-        animationId: null,
-    } as GameState;
-
-    const [control, clear, random] = [
+    const [canvas, control, clear, random] = [
+        mustGetElementById("canvas", HTMLCanvasElement),
         mustGetElementById("control", HTMLButtonElement),
         mustGetElementById("clear", HTMLButtonElement),
         mustGetElementById("random", HTMLButtonElement),
     ];
+    let { renderer, animationId } = {
+        renderer: new GameRenderer(canvas, memory, 32, 32),
+        animationId: null,
+    } as GameState;
 
-    control.textContent = "▶";
-    control.onclick = () => {
-        if (state.animationId) {
-            control.textContent = "▶";
-            cancelAnimationFrame(state.animationId);
-            state.animationId = null;
+    const stopLoop = () => {
+        control.textContent = "▶";
+        cancelAnimationFrame(animationId);
+        animationId = null;
+    };
+    const startLoop = () => {
+        control.textContent = "⏸";
+        run();
+    };
+    const get_row_col = (clientX: number, clientY: number) => {
+        const boundingRect = canvas.getBoundingClientRect();
+
+        const scaleX = canvas.width / boundingRect.width;
+        const scaleY = canvas.height / boundingRect.height;
+
+        const canvasLeft = (clientX - boundingRect.left) * scaleX;
+        const canvasTop = (clientY - boundingRect.top) * scaleY;
+
+        const row = Math.min(
+            Math.floor(canvasTop / (renderer.cellSize + 1)),
+            renderer.height - 1
+        );
+        const col = Math.min(
+            Math.floor(canvasLeft / (renderer.cellSize + 1)),
+            renderer.width - 1
+        );
+
+        return [row, col];
+    };
+
+    control.onclick = () => (animationId ? stopLoop() : startLoop());
+    clear.onclick = () => renderer.reset_cells();
+    random.onclick = () => renderer.randomize_cells();
+    canvas.onclick = (ev: PointerEvent) => {
+        stopLoop();
+        const [row, col] = get_row_col(ev.clientX, ev.clientY);
+        if (ev.ctrlKey) {
+            renderer.draw_glider(row, col);
         } else {
-            control.textContent = "⏸";
-            run();
+            renderer.toggle_cell(row, col);
         }
     };
 
-    clear.onclick = () => state.renderer.universe.reset_cells();
-    random.onclick = () => state.renderer.universe.randomize_cells();
-
     const run = () => {
-        state.renderer.update();
-        state.animationId = requestAnimationFrame(run);
+        animationId = requestAnimationFrame(() => {
+            renderer.tick();
+            run();
+        });
     };
 })();

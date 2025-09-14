@@ -40,7 +40,7 @@ impl Universe {
         self.cells.as_slice()
     }
 
-    pub fn set_rs_cells(&mut self, cells: &[(usize, usize)]) -> () {
+    pub fn set_rs_cells(&mut self, cells: &[(usize, usize)]) {
         for cell in cells.iter().cloned() {
             let index = self.get_index(cell.0, cell.1);
             self.cells[index] = Cell::Alive;
@@ -78,16 +78,35 @@ impl Universe {
         return self.cells.as_ptr();
     }
 
-    pub fn reset_cells(&mut self) -> () {
+    pub fn toggle_cell(&mut self, row: usize, col: usize) {
+        let index = self.get_index(row, col);
+        self.cells[index] = if self.cells[index] == Cell::Alive { Cell::Dead } else { Cell::Alive };
+    }
+
+    pub fn reset_cells(&mut self) {
         for i in 0..self.cells.len() {
             self.cells[i] = Cell::Dead;
         }
     }
 
-    pub fn randomize_cells(&mut self) -> () {
+    pub fn randomize_cells(&mut self) {
         let mut rng = rand::rng();
         for i in 0..self.cells.len() {
             self.cells[i] = if rng.random_bool(0.5) { Cell::Alive } else { Cell::Dead };
+        }
+    }
+
+    pub fn draw_glider(&mut self, row: usize, col: usize) {
+        for di in [self.height-1, 0, 1].iter().cloned() {
+            for dj in [self.width-1, 0, 1].iter().cloned() {
+                if di == self.height-1 && dj == self.width-1 { continue; }
+                if di == 0 && dj == self.width-1 { continue; }
+                if di == self.height-1 && dj == 1 { continue; }
+                if di == 0 && dj == 0 { continue; }
+
+                let index = self.get_index((row+di) % self.height, (col+dj) % self.width);
+                self.cells[index] = Cell::Alive;
+            }
         }
     }
 
@@ -99,12 +118,12 @@ impl Universe {
         self.height
     }
 
-    pub fn set_width(&mut self, width: usize) -> () {
+    pub fn set_width(&mut self, width: usize) {
         self.width = width;
         self.cells = (0..self.width * self.height).map(|_| Cell::Dead).collect();
     }
 
-    pub fn set_height(&mut self, height: usize) -> () {
+    pub fn set_height(&mut self, height: usize) {
         self.height = height;
         self.cells = (0..self.width * self.height).map(|_| Cell::Dead).collect();
     }
