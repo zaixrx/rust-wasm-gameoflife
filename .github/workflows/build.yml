@@ -17,9 +17,6 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Setup Directories
-        run: mkdir -p js/pkg rust dist
-
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -27,13 +24,11 @@ jobs:
           profile: minimal
 
       - name: Compiling WASM Binary
-        working-directory: ./rust
         run: |
           cargo install wasm-pack
-          wasm-pack build --target web --out-dir ../js/pkg
+          wasm-pack build --target web
 
       - name: Building Javascript Code
-        working-directory: ./js
         run: |
           npm install
           npm run build
