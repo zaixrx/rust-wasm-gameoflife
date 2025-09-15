@@ -1,8 +1,5 @@
-# rust
-*/target
-# wasm
-*/pkg
-*.wasm
-# javascript
-*/dist
-*/node_modules
+/target
+/pkg
+.wasm
+/dist
+/node_modules
