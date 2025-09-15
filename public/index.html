@@ -9,12 +9,20 @@
     </head>
     <body>
         <main style="display: flex; flex-direction: column">
+            <p>Ctrl+Click: spawn glider</p>
             <section style="display: flex; flex-direction: row; gap: 1rem">
+                <button id="step-backward" style="height: 2rem; width: 2rem">
+        	    backward 
+                </button>
                 <button id="control" style="height: 2rem; width: 2rem">
                     ▶
                 </button>
+                <button id="step-forward" style="height: 2rem; width: 2rem">
+                    forward
+                </button>
                 <button id="clear">Clear</button>
                 <button id="random">Random</button>
+                <input type="checkbox" id="stop-when-drawing">Stop When Drawing</input>
             </section>
             <canvas
                 id="canvas"

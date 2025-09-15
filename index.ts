@@ -26,30 +26,35 @@ abstract class GameBase {
 
     public reset_cells() {
         this.universe.reset_cells();
-        this.draw_frame();
+        this.drawNextFrame();
     }
 
     public randomize_cells() {
         this.universe.randomize_cells();
-        this.draw_frame();
+        this.drawNextFrame();
     }
 
     public toggle_cell(row: number, col: number) {
         this.universe.toggle_cell(row, col);
-        this.draw_frame();
+        this.drawNextFrame();
     }
 
     public draw_glider(row: number, col: number) {
         this.universe.draw_glider(row, col);
-        this.draw_frame();
+        this.drawNextFrame();
     }
 
     public tick() {
         this.universe.tick();
-        this.draw_frame();
+        this.drawNextFrame();
     }
 
-    public draw_frame?(): void;
+    public back() {
+	this.universe.back();
+	this.drawNextFrame();
+    }
+
+    public drawNextFrame?(): void;
 }
 
 class GameRenderer extends GameBase {
@@ -77,7 +82,7 @@ class GameRenderer extends GameBase {
         if (!this.ctx) throw new Error("canvas must have 2D context");
     }
 
-    public draw_frame(): void {
+    public drawNextFrame(): void {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
         this.ctx.strokeStyle = this.gridColor;
@@ -129,12 +134,14 @@ interface GameState {
 
 (async () => {
     const { memory } = await init();
-    const [canvas, control, clear, random, stopOnDraw] = [
+    const [canvas, backward, control, forward, clear, random, stopOnDraw] = [
         mustGetElementById("canvas", HTMLCanvasElement),
+        mustGetElementById("step-backward", HTMLButtonElement),
         mustGetElementById("control", HTMLButtonElement),
+        mustGetElementById("step-forward", HTMLButtonElement),
         mustGetElementById("clear", HTMLButtonElement),
         mustGetElementById("random", HTMLButtonElement),
-        mustGetElementById("stop-on-draw", HTMLInputElement),
+        mustGetElementById("stop-when-drawing", HTMLInputElement),
     ];
     let { renderer, animationId } = {
         renderer: new GameRenderer(canvas, memory, 32, 32),
@@ -171,7 +178,15 @@ interface GameState {
         return [row, col];
     };
 
+    backward.onclick = () => {
+	stop();
+	renderer.back();
+    };
     control.onclick = () => (animationId ? stopLoop() : startLoop());
+    forward.onclick = () => {
+        stop();
+        renderer.tick();
+    };
     clear.onclick = () => renderer.reset_cells();
     random.onclick = () => renderer.randomize_cells();
     canvas.onclick = (ev: PointerEvent) => {
@@ -184,7 +199,7 @@ interface GameState {
         }
     };
 
-    renderer.draw_frame();
+    renderer.drawNextFrame();
     const run = () => {
         animationId = requestAnimationFrame(() => {
             renderer.tick();
